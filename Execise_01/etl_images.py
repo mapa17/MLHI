@@ -23,27 +23,37 @@ def download_image(imgID, output_path):
         img = os.path.join(output_path, 'image_%s.jpg' % (imgID)) 
         with open(img, 'wb') as f:
             f.write(r.content)
+        return imgID
     except Exception as e:
         print('Downloading %s failed! %s', imgID, e)
+        return None
 
 def transform_image(img_src, img_dest, size):
-    print('Transforming %s ...' % img_src)
-    I = Image.open(img_src)
-    
-    # Crop images making them squared, based on the smallest side
-    length = min(I.size)
-    # Wider than tall
-    if I.size[0] > I.size[1]:
-        xoffset = int((I.size[0]-length) / 2)
-        yoffset = 0
-    else:
-        xoffset = 0
-        yoffset = int((I.size[1]-length) / 2)
-    box = (xoffset, yoffset, xoffset+length, yoffset+length)    
-    I = I.crop(box)
-    I = I.resize(size)
+    try:
+        print('Transforming %s ...' % img_src)
+        I = Image.open(img_src)
+        
+        # Crop images making them squared, based on the smallest side
+        length = min(I.size)
+        # Wider than tall
+        if I.size[0] > I.size[1]:
+            xoffset = int((I.size[0]-length) / 2)
+            yoffset = 0
+        else:
+            xoffset = 0
+            yoffset = int((I.size[1]-length) / 2)
+        box = (xoffset, yoffset, xoffset+length, yoffset+length)    
+        I = I.crop(box)
+        I = I.resize(size)
 
-    I.save(img_dest)
+        # Store image
+        I.save(img_dest)
+
+        return img_dest
+    except Exception as e:
+        print('Transforming image %s failed! %s', img_src, e)
+        return None
+
 
 
 @etl.command()
@@ -75,12 +85,16 @@ def download(output_path, n, offset, dataset, benign_malignant):
             x = entry['meta']['acquisition']['pixelsX']
             y = entry['meta']['acquisition']['pixelsY']
             imgs.append(i)
+    
+    print('Found %d/%d images matching the search requirements ...' % (len(imgs), n))
 
     # Download images
     os.makedirs(output_path, exist_ok=True)
 
     with ProcessPoolExecutor(max_workers=None) as executor:
-        executor.map(download_image, imgs, itertools.repeat(output_path))
+        nImages = [1 for x in executor.map(download_image, imgs, itertools.repeat(output_path)) if x is not None]
+        
+    print('Finished download %d images!' %(sum(nImages)))
 
 
 @etl.command()
@@ -100,6 +114,9 @@ def transform(input_path, output_path, x, y):
 
     with ProcessPoolExecutor(max_workers=None) as executor:
         executor.map(transform_image, img_src, img_dest, itertools.repeat(size))
+        nImages = [1 for x in executor.map(transform_image, img_src, img_dest, itertools.repeat(size)) if x is not None]
+
+    print('Finished transforming %d images!' %(sum(nImages)))
 
 if __name__ == '__main__':
     etl()
