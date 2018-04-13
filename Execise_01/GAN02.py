@@ -123,7 +123,6 @@ class DCGAN():
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     def train(self, sample_dir, GperD_steps=1, ckpt_dir='ckpt', training_epochs = 1000000, batch_size = 32, output_size=10000):
-        fig_count = 0
         self.sess.run(tf.global_variables_initializer())
 
         for epoch in range(training_epochs):
@@ -142,8 +141,7 @@ class DCGAN():
                 samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(16, self.z_dim)})
 
                 fig = self.data.data2fig(samples)
-                plt.savefig('{}/{}.png'.format(sample_dir, str(fig_count).zfill(3)), bbox_inches='tight')
-                fig_count += 1
+                plt.savefig('%s/epoch_%07d.png' % (sample_dir, epoch), bbox_inches='tight')
                 plt.close(fig)
 
 				#if epoch % 2000 == 0:
@@ -152,7 +150,7 @@ class DCGAN():
 
 class ISIC_data():
     def __init__(self, training_data):
-        self.z_dim = 100
+        self.z_dim = 100 # Size of the random input noise vector
         self.size = 64
         self.channel = 3
         self.batch_count = 0
@@ -204,4 +202,4 @@ if __name__ == '__main__':
 
 	# run
 	dcgan = DCGAN(generator, discriminator, data)
-	dcgan.train(sample_dir, training_epochs=20, output_size=5)
+	dcgan.train(sample_dir, training_epochs=100000, output_size=5000)
