@@ -159,10 +159,11 @@ class ISIC_data():
         self.images = []
         for img in self.data: 
             # Normalize between [0,1]
-            self.images.append((np.array(Image.open(img))/255).astype(np.float32))
+            #self.images.append((np.array(Image.open(img))/255).astype(np.float32))
+            self.images.append((np.array(Image.open(img))/255.0))
 
             # Normalize between [-1,1]
-            #images.append(((np.array(Image.open(img))/255) - 0.5)*2.0)
+            #images.append(((np.array(Image.open(img))/255.0) - 0.5)*2.0)
 
         print('Loaded %d images ...' % (len(self.images)))
         self.iterator = itertools.cycle(self.images)
