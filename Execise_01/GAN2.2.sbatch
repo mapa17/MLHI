@@ -6,13 +6,13 @@
 #SBATCH --nodes=1
 # On that node, it will run 4 tasks, each with 1 core and 1 GB of memory.
 #SBATCH --partition=gpu
-#SBATCH --ntasks=4
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=10G
 #SBATCH --qos=short
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:1
 
-#SBATCH --time=0-05:00:00
+#SBATCH --time=0-20:00:00
 # And it will place the output of the commands into my.stdout file
 #SBATCH --output=my.stdout
  
