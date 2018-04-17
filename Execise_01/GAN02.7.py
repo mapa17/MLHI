@@ -48,7 +48,7 @@ class G_conv(object):
 		self.name = 'G_conv'
 		#self.size = 64/16
 		#self.size = 4
-		self.size = 6
+		self.size = 20
 		self.channel = 3
 
 	def __call__(self, z):
@@ -77,7 +77,7 @@ class D_conv(object):
 		with tf.variable_scope(self.name) as scope:
 			if reuse:
 				scope.reuse_variables()
-			size = 96
+			size = 320
 			#size = 64
 			shared = tcl.conv2d(x, num_outputs=size, kernel_size=4, # bzx64x64x3 -> bzx32x32x64
 						stride=2, activation_fn=lrelu)
@@ -209,7 +209,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         sample_dir = sys.argv[1]
         epochs = int(sys.argv[2])
-        lr = float(sys.argv[3])
     else: 
         sample_dir = 'training_progress/'
         epochs = 1000
@@ -223,8 +222,8 @@ if __name__ == '__main__':
     generator = G_conv()
     discriminator = D_conv()
 
-    data = ISIC_data('./training_images_96x96_augmented_5k', 96)
+    data = ISIC_data('./training_images_320x320_augmented_10k', 320)
 
 	# run
-    dcgan = DCGAN(generator, discriminator, data, learning_rate=lr)
+    dcgan = DCGAN(generator, discriminator, data, learning_rate=0.00001)
     dcgan.train(sample_dir, training_epochs=epochs, output_size=epochs/10, batch_size=16)
