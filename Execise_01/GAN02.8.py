@@ -208,9 +208,14 @@ if __name__ == '__main__':
 	# save generated images
     if len(sys.argv) > 1:
         sample_dir = sys.argv[1]
-        epochs = int(sys.argv[2])
+        training_images = sys.argv[2]
+        image_size = int(sys.argv[3])
+        epochs = int(sys.argv[4])
+
     else: 
-        sample_dir = 'training_progress/'
+        sample_dir = './training_progress'
+        training_images = './training_images'
+        image_size = 96
         epochs = 1000
     print('Storing training progress in %s ...' % sample_dir)
     if not os.path.exists(sample_dir):
@@ -222,7 +227,7 @@ if __name__ == '__main__':
     generator = G_conv()
     discriminator = D_conv()
 
-    data = ISIC_data('./training_images_160x160_augmented_10k', 160)
+    data = ISIC_data(training_images, image_size)
 
 	# run
     dcgan = DCGAN(generator, discriminator, data, learning_rate=0.00001)
