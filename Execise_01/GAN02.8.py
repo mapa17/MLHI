@@ -149,7 +149,7 @@ class DCGAN():
                 self.sess.run(self.G_solver, feed_dict={self.z: sample_z(batch_size, self.z_dim)})
 
             # save img, model. print loss
-            if (epoch % output_size == 0) or (epoch == 1) or (epoch == training_epochs-1):
+            if (epoch % output_size == 0) or (epoch == training_epochs-1):
                 D_loss_curr = self.sess.run(self.D_loss, feed_dict={self.X: X_b, self.z: sample_z(batch_size, self.z_dim)})
                 G_loss_curr = self.sess.run(self.G_loss, feed_dict={self.z: sample_z(batch_size, self.z_dim)})
                 print('Iter: {}; D loss: {:.4}; G_loss: {:.4}'.format(epoch, D_loss_curr, G_loss_curr))
