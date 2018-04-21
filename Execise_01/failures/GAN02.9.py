@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 import tensorflow.contrib.layers as tcl
 from tensorflow.examples.tutorials.mnist import input_data
+from keras.utils import multi_gpu_model
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
@@ -128,8 +129,11 @@ class DCGAN():
         self.G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake, labels=tf.ones_like(self.D_fake)))
 
         # solver
-        self.D_solver = tf.train.AdamOptimizer(learning_rate=2e-4).minimize(self.D_loss, var_list=self.discriminator.vars)
-        self.G_solver = tf.train.AdamOptimizer(learning_rate=2e-4).minimize(self.G_loss, var_list=self.generator.vars)
+        self.D_solver = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.D_loss, var_list=self.discriminator.vars)
+        self.G_solver = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.G_loss, var_list=self.generator.vars)
+        
+        self.D_solver =  multi_gpu_model(self.D_solver, gpus=4)
+        self.G_solver =  multi_gpu_model(self.G_solver, gpus=4)
 
         self.saver = tf.train.Saver()
         gpu_options = tf.GPUOptions(allow_growth=True)
@@ -231,4 +235,4 @@ if __name__ == '__main__':
 
 	# run
     dcgan = DCGAN(generator, discriminator, data, learning_rate=0.00001)
-    dcgan.train(sample_dir, training_epochs=epochs, output_size=epochs/10, batch_size=16)
+    dcgan.train(sample_dir, training_epochs=epochs, output_size=epochs/10, batch_size=128)
