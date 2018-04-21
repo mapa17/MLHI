@@ -44,60 +44,61 @@ def write_figure(fig_path, epoch, data):
         plt.close(fig)
 
 class G_conv(object):
-	def __init__(self):
-		self.name = 'G_conv'
-		#self.size = 64/16
-		#self.size = 4
-		self.size = 10
-		self.channel = 3
+    def __init__(self, image_size):
+        self.name = 'G_conv'
+        #self.size = 64/16
+        #self.size = 4
+        self.size = int(image_size/16)
+        self.channel = 3
 
-	def __call__(self, z):
-		with tf.variable_scope(self.name) as scope:
-			g = tcl.fully_connected(z, self.size * self.size * 1024, activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm)
-			g = tf.reshape(g, (-1, self.size, self.size, 1024))  # size
-			g = tcl.conv2d_transpose(g, 512, 3, stride=2, # size*2
-									activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-			g = tcl.conv2d_transpose(g, 256, 3, stride=2, # size*4
-									activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-			g = tcl.conv2d_transpose(g, 128, 3, stride=2, # size*8
-									activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-			
-			g = tcl.conv2d_transpose(g, self.channel, 3, stride=2, # size*16
-										activation_fn=tf.nn.sigmoid, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-			return g
-	@property
-	def vars(self):
-		return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+    def __call__(self, z):
+        with tf.variable_scope(self.name) as scope:
+            g = tcl.fully_connected(z, self.size * self.size * 1024, activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm)
+            g = tf.reshape(g, (-1, self.size, self.size, 1024))  # size
+            g = tcl.conv2d_transpose(g, 512, 3, stride=2, # size*2
+                                    activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+            g = tcl.conv2d_transpose(g, 256, 3, stride=2, # size*4
+                                    activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+            g = tcl.conv2d_transpose(g, 128, 3, stride=2, # size*8
+                                    activation_fn=tf.nn.relu, normalizer_fn=tcl.batch_norm, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+
+            g = tcl.conv2d_transpose(g, self.channel, 3, stride=2, # size*16
+                                        activation_fn=tf.nn.sigmoid, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
+            return g
+    @property
+    def vars(self):
+        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
 class D_conv(object):
-	def __init__(self):
-		self.name = 'D_conv'
+    def __init__(self, image_size=96):
+        self.name = 'D_conv'
+        self.image_size = image_size
 
-	def __call__(self, x, reuse=False):
-		with tf.variable_scope(self.name) as scope:
-			if reuse:
-				scope.reuse_variables()
-			size = 160
-			#size = 64
-			shared = tcl.conv2d(x, num_outputs=size, kernel_size=4, # bzx64x64x3 -> bzx32x32x64
-						stride=2, activation_fn=lrelu)
-			shared = tcl.conv2d(shared, num_outputs=size * 2, kernel_size=4, # 16x16x128
-						stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
-			shared = tcl.conv2d(shared, num_outputs=size * 4, kernel_size=4, # 8x8x256
-						stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
-			shared = tcl.conv2d(shared, num_outputs=size * 8, kernel_size=4, # 4x4x512
-						stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
+    def __call__(self, x, reuse=False):
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+            size = self.image_size 
+            #size = 64
+            shared = tcl.conv2d(x, num_outputs=size, kernel_size=4, # bzx64x64x3 -> bzx32x32x64
+                        stride=2, activation_fn=lrelu)
+            shared = tcl.conv2d(shared, num_outputs=size * 2, kernel_size=4, # 16x16x128
+                        stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
+            shared = tcl.conv2d(shared, num_outputs=size * 4, kernel_size=4, # 8x8x256
+                        stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
+            shared = tcl.conv2d(shared, num_outputs=size * 8, kernel_size=4, # 4x4x512
+                        stride=2, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
 
-			shared = tcl.flatten(shared)
-	
-			d = tcl.fully_connected(shared, 1, activation_fn=None, weights_initializer=tf.random_normal_initializer(0, 0.02))
-			q = tcl.fully_connected(shared, 128, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
-			q = tcl.fully_connected(q, 2, activation_fn=None) # 10 classes
-			return d, q
-			
-	@property
-	def vars(self):
-		return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            shared = tcl.flatten(shared)
+
+            d = tcl.fully_connected(shared, 1, activation_fn=None, weights_initializer=tf.random_normal_initializer(0, 0.02))
+            q = tcl.fully_connected(shared, 128, activation_fn=lrelu, normalizer_fn=tcl.batch_norm)
+            q = tcl.fully_connected(q, 2, activation_fn=None) # 10 classes
+            return d, q
+
+    @property
+    def vars(self):
+        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
 
 def sample_z(m, n):
@@ -166,14 +167,13 @@ class DCGAN():
 
 
 class ISIC_data():
-    def __init__(self, training_data, size):
+    def __init__(self, training_data):
         self.z_dim = 100 # Size of the random input noise vector
-        self.size = size
-        self.channel = 3
         self.batch_count = 0
 
         self.data = glob.glob(os.path.join(training_data, '*.jpg'))
         self.images = []
+        last_size = None
         for img in self.data: 
             # Normalize between [0,1]
             #self.images.append((np.array(Image.open(img))/255).astype(np.float32))
@@ -182,7 +182,15 @@ class ISIC_data():
             # Normalize between [-1,1]
             #images.append(((np.array(Image.open(img))/255.0) - 0.5)*2.0)
 
-        print('Loaded %d images ...' % (len(self.images)))
+            # Check image size
+            if last_size:
+                if last_size != self.images[-1].shape:
+                    print('Warning! Images dont have the same size!')
+            last_size = self.images[-1].shape
+
+        self.size = last_size[0]
+        self.channel = last_size[2]
+        print('Loaded %d images of shape %s...' % (len(self.images), self.size))
         self.iterator = itertools.cycle(self.images)
 
 
@@ -207,28 +215,27 @@ class ISIC_data():
 if __name__ == '__main__':
 	# save generated images
     if len(sys.argv) > 1:
-        sample_dir = sys.argv[1]
-        training_images = sys.argv[2]
-        image_size = int(sys.argv[3])
-        epochs = int(sys.argv[4])
-        batch_size =  int(sys.argv[5])
+        training_images = sys.argv[1]
+        epochs = int(sys.argv[2])
+        batch_size =  int(sys.argv[3])
+        sample_dir = sys.argv[4]
     else: 
-        sample_dir = './training_progress'
         training_images = './training_images'
-        image_size = 96
         epochs = 1000
         batch_size = 16
+        sample_dir = './training_progress'
     print('Storing training progress in %s ...' % sample_dir)
     if not os.path.exists(sample_dir):
         os.makedirs(sample_dir)
     if not os.path.exists(os.path.join(sample_dir, 'single_images')):
         os.makedirs(os.path.join(sample_dir, 'single_images'))
 
-	# param
-    generator = G_conv()
-    discriminator = D_conv()
+    # Extract image size from image loading routine
+    data = ISIC_data(training_images)
+    image_size = data.size
 
-    data = ISIC_data(training_images, image_size)
+    generator = G_conv(image_size=image_size)
+    discriminator = D_conv(image_size=image_size)
 
 	# run
     dcgan = DCGAN(generator, discriminator, data, learning_rate=0.1e-4)

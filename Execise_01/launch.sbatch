@@ -14,7 +14,7 @@
 
 #SBATCH --time=0-20:00:00
 # And it will place the output of the commands into my.stdout file
-#SBATCH --output=my.stdout
+###SBATCH --output=my.stdout
  
 # Prepare modules
 module load tensorflow/1.5.0-foss-2017a-python-2.7.13-cuda-9.0.176
