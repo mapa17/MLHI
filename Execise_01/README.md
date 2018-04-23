@@ -52,3 +52,15 @@ cropping and resizing.
 Example: Transform all images in ./original_images to a size of 100x100 and store them in the folder ./test_images
 
     python isic_dataset.py transform ./original_images ./test_images 100 100
+
+## Data Augmentation
+Training images can be augmented using the [Augmentor](https://github.com/mdbloice/Augmentor) library.
+
+    python isic_dataset.py augment --help
+
+
+Example: Augment images in *training_images*, generating 10000 augmented images
+
+    python isic_dataset.py augment training_images 10000
+
+The augmented images are stored in *training_images/output*
