@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
 import sys
+import random
 
 import glob
 import itertools
@@ -167,9 +168,14 @@ class DCGAN():
 
 
 class ISIC_data():
-    def __init__(self, training_data):
+    def __init__(self, training_data, randomize=False, seed=None):
         self.z_dim = 100 # Size of the random input noise vector
         self.batch_count = 0
+        self.randomize = randomize
+        self.seed = seed
+
+        if self.randomize:
+            random.seed(self.seed)
 
         self.data = glob.glob(os.path.join(training_data, '*.jpg'))
         self.images = []
@@ -192,14 +198,17 @@ class ISIC_data():
         self.channel = last_size[2]
         print('Loaded %d images of shape %s...' % (len(self.images), self.size))
         self.iterator = itertools.cycle(self.images)
-
+        self.imageIdx = range(len(self.images))
 
     def __call__(self, batch_size):
-        return np.array([next(self.iterator) for i in range(batch_size)])
+        if self.randomize:
+            return [self.images[x] for x in random.sample(self.imageIdx, batch_size)]
+        else:
+            return np.array([next(self.iterator) for i in range(batch_size)])
 
-    def data2fig(self, samples):
-        fig = plt.figure(figsize=(4, 4))
-        gs = gridspec.GridSpec(4, 4)
+    def data2fig(self, samples, nimages = 4):
+        fig = plt.figure(figsize=(nimages*1.0, nimages*1.0))
+        gs = gridspec.GridSpec(nimages, nimages)
         gs.update(wspace=0.05, hspace=0.05)
 
         for i, sample in enumerate(samples):
@@ -231,8 +240,11 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(sample_dir, 'single_images'))
 
     # Extract image size from image loading routine
-    data = ISIC_data(training_images)
+    data = ISIC_data(training_images, randomize=True, seed=511)
     image_size = data.size
+
+    # Seed tensorflow
+    tf.set_random_seed(11223344)
 
     generator = G_conv(image_size=image_size)
     discriminator = D_conv(image_size=image_size)
