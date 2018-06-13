@@ -66,7 +66,8 @@ def _train(training_images, epochs, batch_size, output_dir):
 @click.argument('model')
 @click.argument('nimages')
 @click.argument('output_dir')
-def run(model, nimages, output_dir):
+@click.option('--overview', is_flag=True, help='Generate a single output file')
+def generate(model, nimages, output_dir, overview):
     """Run a pretrained GAN to generate new images
     
     Arguments:
@@ -75,9 +76,9 @@ def run(model, nimages, output_dir):
         output_dir {str} -- [path to directory where to store images]
     """
 
-    _run(model, nimages, output_dir)
+    _generate(model, nimages, output_dir, overview)
 
-def _run(model, nimages, output_dir):
+def _generate(model, nimages, output_dir, overview):
     nimages = int(nimages)
     # Seed tensorflow
     tf.set_random_seed(11223344)
@@ -87,7 +88,8 @@ def _run(model, nimages, output_dir):
     dcgan.load(model)
 
     logging.info('Generating %d images writing them to %s ...', nimages, output_dir)
-    dcgan.generate_images(nimages, os.path.join(output_dir, 'overview.jpg'))
+    os.makedirs(output_dir, exist_ok=True)
+    dcgan.generate_images(nimages, output_dir, overview_figure=overview)
 
 
 if __name__ == '__main__':

@@ -34,15 +34,18 @@ def xavier_init(size):
 	return tf.random_normal(shape=size, stddev=xavier_stddev)
 
 
-def write_figure(fig_path, epoch, data):
-    for i, img in enumerate(data):
+def write_figures(fig_path, data, labels=None):
+    if labels is None:
+        labels = ['image_%02d'%i for i in range(len(data))]
+    for i, (img, label) in enumerate(zip(data, labels)):
         fig, ax = plt.subplots(1, 1)
         plt.axis('off')
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_aspect('equal')
         plt.imshow(img)
-        op = os.path.join(fig_path, "epoch_%06d_image_%03d.png" % (epoch, i))
+
+        op = os.path.join(fig_path, "%s.jpg" % (label))
         fig.savefig(op, bbox_inches='tight')
         plt.close(fig)
 
@@ -189,17 +192,36 @@ class DCGAN():
                 plt.savefig('%s/epoch_%07d.jpg' % (sample_dir, epoch), bbox_inches='tight')
                 plt.close(fig)
             
-                write_figure(os.path.join(sample_dir, 'single_images'), epoch, samples)
+                write_figures(os.path.join(sample_dir, 'single_images'), epoch, samples)
 
                 self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan.ckpt"))
     
 
-    def generate_images(self, nsamples, output_path):
-        samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(nsamples*nsamples, self.z_dim)})
+    def generate_images(self, nsamples, output_path, overview_figure=False):
+        seeds = sample_z(nsamples, self.z_dim)
+        samples = self.sess.run(self.G_sample, feed_dict={self.z: seeds})
         #fig = self.data.data2fig(samples, nimages=nsamples)
-        fig = ISIC_data.data2fig(samples, nimages=nsamples)
-        plt.savefig('%s' % (output_path), bbox_inches='tight', dpi=200)
-        plt.close(fig)
+        if overview_figure:
+            fig = data2fig(samples, nimages=int(np.sqrt(nsamples)))
+            plt.savefig(os.path.join(output_path, 'overview.jpg'), bbox_inches='tight', dpi=200)
+            plt.close(fig)
+        else:
+            write_figures(output_path, samples)
+
+
+def data2fig(samples, nimages = 4):
+    fig = plt.figure(figsize=(nimages*1.0, nimages*1.0))
+    gs = gridspec.GridSpec(nimages, nimages)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, sample in enumerate(samples):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        plt.imshow(sample)
+    return fig
 
 
 
@@ -245,22 +267,6 @@ class ISIC_data():
             return [self.images[x] for x in random.sample(self.imageIdx, batch_size)]
         else:
             return np.array([next(self.iterator) for i in range(batch_size)])
-
-    @staticmethod
-    def data2fig(samples, nimages = 4):
-        fig = plt.figure(figsize=(nimages*1.0, nimages*1.0))
-        gs = gridspec.GridSpec(nimages, nimages)
-        gs.update(wspace=0.05, hspace=0.05)
-
-        for i, sample in enumerate(samples):
-            ax = plt.subplot(gs[i])
-            plt.axis('off')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            ax.set_aspect('equal')
-            plt.imshow(sample)
-        return fig
-
 
 
 if __name__ == '__main__':
