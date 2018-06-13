@@ -11,7 +11,7 @@ Unpack the training images
 
     tar xf training_set/training_images_160x160_augmented_10k.tar.bz2
 
-Train the GAN for 200000 epochs with a batch size of 16, writing results to ./output
+Train the GAN for 200000 training cycles with a batch size of 16, writing results to ./output
 
     python GAN.py training_images_160x160_augmented_10k 200000 16 output
 

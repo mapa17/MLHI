@@ -6,7 +6,7 @@ import tensorflow.contrib.layers as tcl
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
@@ -16,6 +16,7 @@ import random
 import glob
 import itertools
 from PIL import Image
+from pudb import set_trace as st
 
 
 def leaky_relu(x, alpha=0.2):
@@ -31,6 +32,7 @@ def xavier_init(size):
 	in_dim = size[0]
 	xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
 	return tf.random_normal(shape=size, stddev=xavier_stddev)
+
 
 def write_figure(fig_path, epoch, data):
     for i, img in enumerate(data):
@@ -106,7 +108,24 @@ def sample_z(m, n):
 	return np.random.uniform(-1., 1., size=[m, n])
 
 class DCGAN():
-    def __init__(self, generator, discriminator, data, learning_rate=2e-4):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def load(cls, import_path):
+        sess = tf.Session()
+        new_saver = tf.train.import_meta_graph(import_path+'.meta')
+        new_saver.restore(sess, import_path)
+        cls.X, cls.z, cls.G_sample, cls.D_loss, cls.G_loss, cls.D_solver, cls.G_solver = tf.get_collection('GAN')
+        cls.sess = sess
+
+        # Restore additional values
+        cls.z_dim = int(cls.z.shape[1])
+        cls.size = int(cls.X.shape[1])
+        cls.channel = int(cls.X.shape[3])
+
+    @classmethod
+    def create(self, generator, discriminator, data, learning_rate=2e-4):
         self.generator = generator
         self.discriminator = discriminator
         self.data = data
@@ -134,8 +153,17 @@ class DCGAN():
         self.G_solver = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.G_loss, var_list=self.generator.vars)
         
         self.saver = tf.train.Saver()
+        tf.add_to_collection('GAN', self.X)
+        tf.add_to_collection('GAN', self.z)
+        tf.add_to_collection('GAN', self.G_sample)
+        tf.add_to_collection('GAN', self.D_loss)
+        tf.add_to_collection('GAN', self.G_loss)
+        tf.add_to_collection('GAN', self.D_solver)
+        tf.add_to_collection('GAN', self.G_solver)
+
         gpu_options = tf.GPUOptions(allow_growth=True)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+
 
     def train(self, sample_dir, DvsG_steps=1, GperD_steps=1, ckpt_dir='ckpt', training_epochs = 1000000, batch_size = 32, output_size=10000):
         self.sess.run(tf.global_variables_initializer())
@@ -158,18 +186,28 @@ class DCGAN():
                 samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(16, self.z_dim)})
 
                 fig = self.data.data2fig(samples)
-                plt.savefig('%s/epoch_%07d.png' % (sample_dir, epoch), bbox_inches='tight')
+                plt.savefig('%s/epoch_%07d.jpg' % (sample_dir, epoch), bbox_inches='tight')
                 plt.close(fig)
             
                 write_figure(os.path.join(sample_dir, 'single_images'), epoch, samples)
 
-				#if epoch % 2000 == 0:
-					#self.saver.save(self.sess, os.path.join(ckpt_dir, "dcgan.ckpt"))
+                self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan.ckpt"))
+    
+
+    def generate_images(self, nsamples, output_path):
+        samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(nsamples*nsamples, self.z_dim)})
+        #fig = self.data.data2fig(samples, nimages=nsamples)
+        fig = ISIC_data.data2fig(samples, nimages=nsamples)
+        plt.savefig('%s' % (output_path), bbox_inches='tight', dpi=200)
+        plt.close(fig)
+
 
 
 class ISIC_data():
     def __init__(self, training_data, randomize=False, seed=None):
         self.z_dim = 100 # Size of the random input noise vector
+        self.size = 0 # Image pixel size (assume squared)
+        self.channel = 0
         self.batch_count = 0
         self.randomize = randomize
         self.seed = seed
@@ -197,6 +235,8 @@ class ISIC_data():
         self.size = last_size[0]
         self.channel = last_size[2]
         print('Loaded %d images of shape %s...' % (len(self.images), self.size))
+
+        # Prepare an iterator that returns pictures when ever data() is called
         self.iterator = itertools.cycle(self.images)
         self.imageIdx = range(len(self.images))
 
@@ -206,7 +246,8 @@ class ISIC_data():
         else:
             return np.array([next(self.iterator) for i in range(batch_size)])
 
-    def data2fig(self, samples, nimages = 4):
+    @staticmethod
+    def data2fig(samples, nimages = 4):
         fig = plt.figure(figsize=(nimages*1.0, nimages*1.0))
         gs = gridspec.GridSpec(nimages, nimages)
         gs.update(wspace=0.05, hspace=0.05)
@@ -221,8 +262,8 @@ class ISIC_data():
         return fig
 
 
+
 if __name__ == '__main__':
-	# save generated images
     if len(sys.argv) > 1:
         training_images = sys.argv[1]
         epochs = int(sys.argv[2])
@@ -240,7 +281,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(sample_dir, 'single_images'))
 
     # Extract image size from image loading routine
-    data = ISIC_data(training_images, randomize=True, seed=511)
+    data = ISIC_data(training_images, randomize=False, seed=511)
     image_size = data.size
 
     # Seed tensorflow
@@ -250,5 +291,6 @@ if __name__ == '__main__':
     discriminator = D_conv(image_size=image_size)
 
 	# run
-    dcgan = DCGAN(generator, discriminator, data, learning_rate=0.1e-4)
+    dcgan = DCGAN()
+    dcgan.create(generator, discriminator, data, learning_rate=0.1e-4)
     dcgan.train(sample_dir, training_epochs=epochs, output_size=epochs/10, batch_size=batch_size)
