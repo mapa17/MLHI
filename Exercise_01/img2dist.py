@@ -72,7 +72,8 @@ def color_quantization(image_path, ncolors, sample_points=0.30):
     cnts, _ = np.histogram(kmeans.predict(image_array), bins=ncolors)
     cnts = cnts / cnts.sum()
 
-    points = np.concatenate([centroids, cnts[:, None]], axis=1)
+    #points = np.concatenate([centroids, cnts[:, None]], axis=1)
+    points = centroids
     return points 
 
 
@@ -114,21 +115,26 @@ def mds_embedding(centroids):
 
 
 def distance_plot(coords, labels=None, colors=None, title=''):
-    N = len(coords)
     if labels is None:
         labels = itertools.cycle([''])
 
     if colors is None:
-        cmap = plt.cm.get_cmap('Spectral')
-        colors = cmap(np.linspace(0, 1, N))
-    else:
         cmap = None
+        colors = itertools.cycle(['blue'])
+    else:
+        # Take the colors list and map it to values in range [0, 1]
+        ucolors = np.unique(colors)
+        cmap = plt.cm.get_cmap('Spectral')
+        norm_colors = cmap(np.linspace(0, 1, len(ucolors)))
+        color_table = dict(zip(ucolors, norm_colors))
+        new_colors = [color_table[x] for x in colors]
+        colors = new_colors
 
     f, ax = plt.subplots(figsize=(10, 10))
-    for (x, y), label, color in zip(coords, labels, itertools.cycle(colors)):
+    for (x, y), label, color in zip(coords, labels, colors):
         ax.scatter(x, y, c=color, label=label, cmap=cmap)
         ax.annotate(label, (x, y-0.01), color='black', horizontalalignment='center', verticalalignment='top')
-    #ax.legend()
+
     ax.grid(True)
 
     std = coords.std(axis=0)
@@ -136,50 +142,38 @@ def distance_plot(coords, labels=None, colors=None, title=''):
     return f
 
 
-def generate_distance_plot_for_image_folder(image_folder, output_plot, ncentroids=5):
-    images = glob.glob(os.path.join(image_folder, '*.jpg'))
-    logging.info('Found %d images ...' % len(images))
-
-    centroids = [color_quantization(image, ncolors=ncentroids) for image in images]
-
-    coords, distances = mds_embedding(centroids)
-
-    labels = [os.path.splitext(os.path.basename(image))[0] for image in images]
-    fig = distance_plot(coords, labels=None, title='mean distance %2.2f, max distance %2.2f' % (distances.mean(), distances.max()))
-
-    fig.savefig(output_plot)
-    plt.close(fig)
-
-def find_images(paths):
+def find_images(paths, grouping=False):
     images = []
-    for path in paths:
+    groups = []
+    for grp_idx, path in enumerate(paths):
         if os.path.isfile(path):
             images.append(path)
+            groups.append(grp_idx)
         else:
             imgs = glob.iglob(os.path.join(path, '**/*.jpg'), recursive=True)
             imgs2 = glob.iglob(os.path.join(path, '**/*.png'), recursive=True)
-            images += list(imgs)
-            images += list(imgs2)
-    return tuple(images)
+            imgs = list(imgs)
+            imgs2 = list(imgs2)
+            images += imgs
+            images += imgs2
+            groups += [grp_idx]*(len(imgs) + len(imgs2))
+    if grouping:
+        return tuple(groups), tuple(images)
+    else:
+        return tuple(images)
 
 
-def common_filename(target, others):
-    same_group = (target, )
-    other_group = ()
-    for other in others:
-        if os.path.commonprefix((target,  other)) is '':
-            other_group += (other, )
-        else:
-            same_group += (other, )
-    return same_group, other_group
+def basenames(filenames):
+    return [os.path.basename(filename) for filename in filenames]
 
 
 @img2dist.command()
-@click.argument('output_image', help="Path of where to write distance plot")
-@click.argument('image_path', nargs=-1, help='List of images or directory of images')
+@click.argument('output_image')
+@click.argument('image_path', nargs=-1)
 @click.option('--centroids', default=5, type=int, help='Number of centroids to use for calculating image features')
 @click.option('--group', is_flag=True, help='Try to color group images by filename similarity')
-def embedding(output_image, image_path, centroids):
+@click.option('--skip-labels', 'skip_labels', is_flag=True, help='Add no labels to the scatter plot')
+def embedding(output_image, image_path, centroids, group, skip_labels):
     """Calculate the distance between two images
     
     Arguments:
@@ -187,13 +181,28 @@ def embedding(output_image, image_path, centroids):
         image_path {str} -- [Multi paths to image files, or directories]
         centroids {int} -- [number of centroids]
     """
-    _embedding(output_image, image_path, centroids)
+    _embedding(output_image, image_path, centroids, group, skip_labels)
 
-def _embedding(output_images, image_path, centroids):
-    images = find_images(image_path)
+def _embedding(output_images, image_path, centroids, group, skip_labels):
+    if group:
+        colors, images = find_images(image_path, grouping = True)
+    else:
+        colors = None
+        images = find_images(image_path)
+    logging.info('Found %d images ...' % len(images))
+
+    if skip_labels:
+        labels = None
+    else:
+        labels = basenames(images)
+
+    logging.info('Calculating centroids ...')
     centroids = [color_quantization(image, centroids) for image in images]
-    coords = mds_embedding(centroids)    
-    fig = distance_plot(coords, labels='abcdef')
+    coords, distances = mds_embedding(centroids)    
+
+    logging.info(f'Writing figure to {output_images} ...')
+    title = 'mean distance %2.2f, max distance %2.2f' % (distances.mean(), distances.max())
+    fig = distance_plot(coords, labels=labels, colors=colors, title=title)
     fig.savefig(output_images, dpi=200)
 
 
