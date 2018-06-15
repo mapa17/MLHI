@@ -114,7 +114,7 @@ def mds_embedding(centroids):
     return coords, distances
 
 
-def distance_plot(coords, labels=None, colors=None, title=''):
+def distance_plot(coords, labels=None, colors=None, title='', limits=None):
     if labels is None:
         labels = itertools.cycle([''])
 
@@ -136,6 +136,9 @@ def distance_plot(coords, labels=None, colors=None, title=''):
         ax.annotate(label, (x, y-0.01), color='black', horizontalalignment='center', verticalalignment='top')
 
     ax.grid(True)
+    if limits is not None:
+        ax.set_xlim(-limits, limits)
+        ax.set_ylim(-limits, limits)
 
     std = coords.std(axis=0)
     ax.set_title('MDS embedding coord std(%2.2f, %2.2f)\n%s' % (std[0], std[1], title))
@@ -171,9 +174,10 @@ def basenames(filenames):
 @click.argument('output_image')
 @click.argument('image_path', nargs=-1)
 @click.option('--centroids', default=5, type=int, help='Number of centroids to use for calculating image features')
+@click.option('--limits', default=1.0, type=float, help='Define symmetrical limits for the plotting')
 @click.option('--group', is_flag=True, help='Try to color group images by filename similarity')
 @click.option('--skip-labels', 'skip_labels', is_flag=True, help='Add no labels to the scatter plot')
-def embedding(output_image, image_path, centroids, group, skip_labels):
+def embedding(output_image, image_path, centroids, limits, group, skip_labels):
     """Calculate the distance between two images
     
     Arguments:
@@ -181,9 +185,9 @@ def embedding(output_image, image_path, centroids, group, skip_labels):
         image_path {str} -- [Multi paths to image files, or directories]
         centroids {int} -- [number of centroids]
     """
-    _embedding(output_image, image_path, centroids, group, skip_labels)
+    _embedding(output_image, image_path, centroids, limits, group, skip_labels)
 
-def _embedding(output_images, image_path, centroids, group, skip_labels):
+def _embedding(output_images, image_path, centroids, limits, group, skip_labels):
     if group:
         colors, images = find_images(image_path, grouping = True)
     else:
@@ -202,7 +206,7 @@ def _embedding(output_images, image_path, centroids, group, skip_labels):
 
     logging.info(f'Writing figure to {output_images} ...')
     title = 'mean distance %2.2f, max distance %2.2f' % (distances.mean(), distances.max())
-    fig = distance_plot(coords, labels=labels, colors=colors, title=title)
+    fig = distance_plot(coords, labels=labels, colors=colors, title=title, limits=abs(limits))
     fig.savefig(output_images, dpi=200)
 
 

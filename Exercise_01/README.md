@@ -1,4 +1,4 @@
-# ASIC GAN
+# Exercise
 In this exercise we have to create a GAN that generates images of melanoma similar
 to [isic-archive](https://isic-archive.com).
 
@@ -21,6 +21,16 @@ Example1 | Example 2  | Example 3
 :-------------:|:------------:|:-------------:
 ![](example_images/example1.png)  | ![](example_images/example2.png)  | ![](example_images/example3.png)  |
 
+
+# GANcontrol
+Gancontrol is another script that facilitates the training, retraining and generation of new images.
+
+## Image generation
+Use a pre trained network in **newgen/ckpt-10000/dcgan.ckpt** and generate 50 new images, storing them in **./newlycreated**.
+
+```bash
+python GANcontrol.py generate newgen/ckpt-10000/dcgan.ckpt 50 ./newlycreated
+```
 
 # ETL of test images
 In order to download and preprocess images of the data-set I created a tool
@@ -89,3 +99,5 @@ Or compare the distance distribution of various image groups, by saving images i
 ```bash
 python img2dist.py embedding --skip-labels --group color_distance_test.jpg color_distance/*
 ```
+
+> Note: One can define the limits of the plot using  *--limits 2.0*
