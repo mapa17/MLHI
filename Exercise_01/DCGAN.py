@@ -34,9 +34,9 @@ def xavier_init(size):
 	return tf.random_normal(shape=size, stddev=xavier_stddev)
 
 
-def write_figures(fig_path, data, labels=None):
+def write_figures(fig_path, data, labels=None, image_prefix=''):
     if labels is None:
-        labels = ['image_%02d'%i for i in range(len(data))]
+        labels = ['%s%02d'%(image_prefix, i) for i in range(len(data))]
     for i, (img, label) in enumerate(zip(data, labels)):
         fig, ax = plt.subplots(1, 1)
         plt.axis('off')
@@ -168,7 +168,7 @@ class DCGAN():
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 
-    def train(self, sample_dir, DvsG_steps=1, GperD_steps=1, ckpt_dir='ckpt', training_epochs = 1000000, batch_size = 32, output_size=10000):
+    def train(self, sample_dir, DvsG_steps=1, GperD_steps=1, ckpt_dir='ckpt', keep_checkpoints=False, training_epochs = 1000000, batch_size = 32, checkpoint=10000):
         self.sess.run(tf.global_variables_initializer())
 
         for epoch in range(training_epochs):
@@ -182,19 +182,23 @@ class DCGAN():
                 self.sess.run(self.G_solver, feed_dict={self.z: sample_z(batch_size, self.z_dim)})
 
             # save img, model. print loss
-            if (epoch % output_size == 0) or (epoch == training_epochs-1):
+            if (epoch % checkpoint == 0) or (epoch == training_epochs-1):
                 D_loss_curr = self.sess.run(self.D_loss, feed_dict={self.X: X_b, self.z: sample_z(batch_size, self.z_dim)})
                 G_loss_curr = self.sess.run(self.G_loss, feed_dict={self.z: sample_z(batch_size, self.z_dim)})
                 print('Iter: {}; D loss: {:.4}; G_loss: {:.4}'.format(epoch, D_loss_curr, G_loss_curr))
                 samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(16, self.z_dim)})
 
+                # Write overview picture
                 fig = self.data.data2fig(samples)
                 plt.savefig('%s/epoch_%07d.jpg' % (sample_dir, epoch), bbox_inches='tight')
                 plt.close(fig)
-            
-                write_figures(os.path.join(sample_dir, 'single_images'), epoch, samples)
+                #write_figures(os.path.join(sample_dir, 'single_images'), epoch, samples)
 
-                self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan.ckpt"))
+                if keep_checkpoints:
+                    global_step=epoch
+                else:
+                    global_step=None
+                self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan", global_step=global_step))
     
 
     def generate_images(self, nsamples, output_path, overview_figure=False):
@@ -299,4 +303,4 @@ if __name__ == '__main__':
 	# run
     dcgan = DCGAN()
     dcgan.create(generator, discriminator, data, learning_rate=0.1e-4)
-    dcgan.train(sample_dir, training_epochs=epochs, output_size=epochs/10, batch_size=batch_size)
+    dcgan.train(sample_dir, training_epochs=epochs, checkpoint=epochs/10, batch_size=batch_size)

@@ -124,7 +124,8 @@ def distance_plot(coords, labels=None, colors=None, title='', limits=None):
     else:
         # Take the colors list and map it to values in range [0, 1]
         ucolors = np.unique(colors)
-        cmap = plt.cm.get_cmap('Spectral')
+        cmap = plt.cm.get_cmap('Set1')
+        #cmap = plt.cm.get_cmap('Spectral')
         norm_colors = cmap(np.linspace(0, 1, len(ucolors)))
         color_table = dict(zip(ucolors, norm_colors))
         new_colors = [color_table[x] for x in colors]

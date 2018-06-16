@@ -34,7 +34,8 @@ def GANcontrol(verbose, log):
 @click.argument('epochs')
 @click.argument('batch_size')
 @click.argument('output_dir')
-def train(training_images, epochs, batch_size, output_dir):
+@click.option('--keep-checkpoints', 'keep_checkpoints', is_flag=True, help='Keep checkpoints')
+def train(training_images, epochs, batch_size, output_dir, keep_checkpoints):
     """Train a DCGAN on given training images
     
     Arguments:
@@ -43,9 +44,9 @@ def train(training_images, epochs, batch_size, output_dir):
         batch_size {int} -- [number of images to train per cycle]
         output_dir {str} -- [path to folder where to store results]
     """
-    _train(training_images, epochs, batch_size, output_dir)
+    _train(training_images, epochs, batch_size, output_dir, keep_checkpoints)
 
-def _train(training_images, epochs, batch_size, output_dir):
+def _train(training_images, epochs, batch_size, output_dir, keep_checkpoints):
     # Extract image size from image loading routine
     data = DCGAN.ISIC_data(training_images, randomize=False, seed=511)
     image_size = data.size
@@ -59,7 +60,7 @@ def _train(training_images, epochs, batch_size, output_dir):
 	# run
     dcgan = DCGAN.DCGAN()
     dcgan.create(generator, discriminator, data, learning_rate=0.1e-4)
-    dcgan.train(output_dir, training_epochs=epochs, output_size=epochs/10, batch_size=batch_size)
+    dcgan.train(output_dir, training_epochs=epochs, checkpoints=epochs/10, batch_size=batch_size, keep_checkpoints=keep_checkpoints)
 
 
 @GANcontrol.command()
