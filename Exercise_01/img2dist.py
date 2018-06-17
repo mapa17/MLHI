@@ -114,7 +114,7 @@ def mds_embedding(centroids):
     return coords, distances
 
 
-def distance_plot(coords, labels=None, colors=None, title='', limits=None):
+def distance_plot(coords, labels=None, colors=None, title='', limits=None, legend=False):
     if labels is None:
         labels = itertools.cycle([''])
 
@@ -140,6 +140,9 @@ def distance_plot(coords, labels=None, colors=None, title='', limits=None):
     if limits is not None:
         ax.set_xlim(-limits, limits)
         ax.set_ylim(-limits, limits)
+
+    if legend:
+        ax.legend()
 
     std = coords.std(axis=0)
     ax.set_title('MDS embedding coord std(%2.2f, %2.2f)\n%s' % (std[0], std[1], title))
@@ -178,17 +181,19 @@ def basenames(filenames):
 @click.option('--limits', default=1.0, type=float, help='Define symmetrical limits for the plotting')
 @click.option('--group', is_flag=True, help='Try to color group images by filename similarity')
 @click.option('--skip-labels', 'skip_labels', is_flag=True, help='Add no labels to the scatter plot')
-def embedding(output_image, image_path, centroids, limits, group, skip_labels):
-    """Calculate the distance between two images
+@click.option('--legend', is_flag=True, help='Add legend to the plot')
+@click.option('--group-labels', 'group_labels', is_flag=True, help='Label the different groups')
+def embedding(output_image, image_path, centroids, limits, group, skip_labels, legend, group_labels):
+    """Generate a scatter plot showing a two dimensional embedding of images
     
     Arguments:
         output_image {str} -- [Path to output image]
         image_path {str} -- [Multi paths to image files, or directories]
         centroids {int} -- [number of centroids]
     """
-    _embedding(output_image, image_path, centroids, limits, group, skip_labels)
+    _embedding(output_image, image_path, centroids, limits, group, skip_labels, legend, group_labels)
 
-def _embedding(output_images, image_path, centroids, limits, group, skip_labels):
+def _embedding(output_images, image_path, centroids, limits, group, skip_labels, legend, group_labels):
     if group:
         colors, images = find_images(image_path, grouping = True)
     else:
@@ -196,18 +201,33 @@ def _embedding(output_images, image_path, centroids, limits, group, skip_labels)
         images = find_images(image_path)
     logging.info('Found %d images ...' % len(images))
 
-    if skip_labels:
-        labels = None
-    else:
-        labels = basenames(images)
-
     logging.info('Calculating centroids ...')
     centroids = [color_quantization(image, centroids) for image in images]
     coords, distances = mds_embedding(centroids)    
 
+    if skip_labels:
+        labels = None
+    else:
+        if group_labels:
+            legend=True
+            # Find for each group the element that is closest to its center of mass
+            groups = np.array(colors)
+            folders = np.array([os.path.split(os.path.split(x)[0])[-1] for x in images])
+            labels = []
+            for group_value in np.unique(colors):
+                selection = groups == group_value
+                group = groups[selection]
+                group_folders = folders[selection]
+                group_coords = coords[selection]
+                closest = sklearn.metrics.pairwise_distances_argmin(group_coords.mean(axis=0)[None], group_coords)
+                labels += [group_folders[x] if x == closest else '' for x in range(len(group))]
+        else:
+            # Use the basename as labels
+            labels = basenames(images)
+
     logging.info(f'Writing figure to {output_images} ...')
     title = 'mean distance %2.2f, max distance %2.2f' % (distances.mean(), distances.max())
-    fig = distance_plot(coords, labels=labels, colors=colors, title=title, limits=abs(limits))
+    fig = distance_plot(coords, labels=labels, colors=colors, title=title, limits=abs(limits), legend=legend)
     fig.savefig(output_images, dpi=200)
 
 

@@ -97,7 +97,7 @@ python img2dist.py embedding --skip-labels training_images_subset.jpg training_i
 Or compare the distance distribution of various image groups, by saving images in different sub-folders.
 
 ```bash
-python img2dist.py embedding --skip-labels --group color_distance_test.jpg color_distance/*
+python img2dist.py embedding --group --group-labels --limits 2.0 color_distance_test.jpg color_distance/*
 ```
 
 > Note: One can define the limits of the plot using  *--limits 2.0*
