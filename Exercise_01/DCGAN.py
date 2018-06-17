@@ -16,7 +16,7 @@ import random
 import glob
 import itertools
 from PIL import Image
-from pudb import set_trace as st
+#from pudb import set_trace as st
 
 
 def leaky_relu(x, alpha=0.2):
@@ -170,7 +170,7 @@ class DCGAN():
 
     def train(self, sample_dir, DvsG_steps=1, GperD_steps=1, ckpt_dir='ckpt', keep_checkpoints=False, training_epochs = 1000000, batch_size = 32, checkpoint=10000):
         self.sess.run(tf.global_variables_initializer())
-
+        global_step = None
         for epoch in range(training_epochs):
             # update D
             for _ in range(DvsG_steps):
@@ -189,16 +189,14 @@ class DCGAN():
                 samples = self.sess.run(self.G_sample, feed_dict={self.z: sample_z(16, self.z_dim)})
 
                 # Write overview picture
-                fig = self.data.data2fig(samples)
+                fig = data2fig(samples)
                 plt.savefig('%s/epoch_%07d.jpg' % (sample_dir, epoch), bbox_inches='tight')
                 plt.close(fig)
                 #write_figures(os.path.join(sample_dir, 'single_images'), epoch, samples)
 
                 if keep_checkpoints:
                     global_step=epoch
-                else:
-                    global_step=None
-                self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan", global_step=global_step))
+                self.saver.save(self.sess, os.path.join(sample_dir, ckpt_dir, "dcgan"), global_step=global_step)
     
 
     def generate_images(self, nsamples, output_path, overview_figure=False):
@@ -303,4 +301,4 @@ if __name__ == '__main__':
 	# run
     dcgan = DCGAN()
     dcgan.create(generator, discriminator, data, learning_rate=0.1e-4)
-    dcgan.train(sample_dir, training_epochs=epochs, checkpoint=epochs/10, batch_size=batch_size)
+    dcgan.train(sample_dir, training_epochs=epochs, checkpoint=epochs/10, batch_size=batch_size, keep_checkpoints=True)
