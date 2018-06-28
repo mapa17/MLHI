@@ -25,6 +25,8 @@ Use a pre trained network in **newgen/ckpt-10000/dcgan.ckpt** and generate 50 ne
 python GANcontrol.py generate newgen/ckpt-10000/dcgan.ckpt 50 ./newlycreated
 ```
 
+> Note: use the option --overview to generate a single figure containing NxN pictures
+
 # DCGAN
 This is a deep convolution GAN based on [YadiraF's dcgan](https://github.com/YadiraF/GAN/blob/master/dcgan.py). It has been altered 
 to be trained and generate images of 160x160 pixels.
