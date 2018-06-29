@@ -127,6 +127,18 @@ class DCGAN():
         cls.size = int(cls.X.shape[1])
         cls.channel = int(cls.X.shape[3])
 
+        #TODO: have to add saver! 
+        """
+        cls.saver = tf.train.Saver(max_to_keep=100)
+        tf.add_to_collection('GAN', cls.X)
+        tf.add_to_collection('GAN', cls.z)
+        tf.add_to_collection('GAN', cls.G_sample)
+        tf.add_to_collection('GAN', cls.D_loss)
+        tf.add_to_collection('GAN', cls.G_loss)
+        tf.add_to_collection('GAN', cls.D_solver)
+        tf.add_to_collection('GAN', cls.G_solver)
+        """
+
     @classmethod
     def create(self, generator, discriminator, data, learning_rate=2e-4):
         self.generator = generator
@@ -155,7 +167,7 @@ class DCGAN():
         self.D_solver = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.D_loss, var_list=self.discriminator.vars)
         self.G_solver = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.G_loss, var_list=self.generator.vars)
         
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=100)
         tf.add_to_collection('GAN', self.X)
         tf.add_to_collection('GAN', self.z)
         tf.add_to_collection('GAN', self.G_sample)
