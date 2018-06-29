@@ -72,8 +72,10 @@ def color_quantization(image_path, ncolors, sample_points=0.30):
     cnts, _ = np.histogram(kmeans.predict(image_array), bins=ncolors)
     cnts = cnts / cnts.sum()
 
+    # Select if to use weights of the centroids or only their positions in RGB space
     #points = np.concatenate([centroids, cnts[:, None]], axis=1)
     points = centroids
+
     return points 
 
 
@@ -150,6 +152,20 @@ def distance_plot(coords, labels=None, colors=None, title='', limits=None, legen
 
 
 def find_images(paths, grouping=False):
+    """Find all jpg and png images in given path and subdirectories
+    If grouping is True than separate paths will be treated as independent groups,
+    and one additional tuple will be returned that indicates for each image to which
+    group it corresponds
+
+    Arguments:
+        paths {tuple(string)} -- [A list of paths]
+    
+    Keyword Arguments:
+        grouping {bool} -- [If set true will return an a tuple of group index for each image] (default: {False})
+    
+    Returns:
+        [tuple(image paths) or tuple(of group indices), tuple(image paths)] -- [image paths and group indices]
+    """
     images = []
     groups = []
     for grp_idx, path in enumerate(paths):
@@ -170,8 +186,29 @@ def find_images(paths, grouping=False):
         return tuple(images)
 
 
-def basenames(filenames):
-    return [os.path.basename(filename) for filename in filenames]
+def analyze_groups(grouping, coords, distances):
+    # Calculate mean group distance and stdandart deviation
+    std = coords.std(axis=0)
+    grouping = np.array(grouping)
+    groups = np.unique(grouping)
+
+    for group_value in np.unique(colors):
+        selection = groups == group_value
+        group = groups[selection]
+        group_folders = folders[selection]
+        group_coords = coords[selection]
+        closest = sklearn.metrics.pairwise_distances_argmin(group_coords.mean(axis=0)[None], group_coords)
+        labels += [group_folders[x] if x == closest else '' for x in range(len(group))]
+    
+    raise NotImplemented('This is work in progress')
+
+
+
+def basenames(filenames, rm_ext=False):
+    if rm_ext:
+        return [os.path.splitext(os.path.basename(filename))[0] for filename in filenames]
+    else:
+        return [os.path.basename(filename) for filename in filenames]
 
 
 @img2dist.command()
@@ -223,7 +260,7 @@ def _embedding(output_images, image_path, centroids, limits, group, skip_labels,
                 labels += [group_folders[x] if x == closest else '' for x in range(len(group))]
         else:
             # Use the basename as labels
-            labels = basenames(images)
+            labels = basenames(images, rm_ext=True)
 
     logging.info(f'Writing figure to {output_images} ...')
     title = 'mean distance %2.2f, max distance %2.2f' % (distances.mean(), distances.max())
